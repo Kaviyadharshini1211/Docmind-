@@ -22,12 +22,27 @@ connectDB();
 
 const app = express();
 
-app.use(cors({
-  origin: [
+const allowedOrigins = [
   "http://localhost:3000",
-  "https://doc-mind-pink.vercel.app",
-  "https://doc-mind-pink.vercel.app/"
-],
+  "https://doc-mind-pink.vercel.app"
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // allow requests with no origin (Postman, mobile apps)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS not allowed"));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+}));
+
+// ✅ Explicitly handle preflight (IMPORTANT for file upload)
+app.options("/*", cors({
+  origin: allowedOrigins,
   credentials: true,
 }));
 
