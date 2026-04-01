@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Fix numpy issue
-RUN pip3 install --no-cache-dir "numpy<2.0" "chromadb==0.4.24" --break-system-packages
+RUN pip3 install --no-cache-dir "numpy<2.0" "chromadb==1.5.5" --break-system-packages
 
 RUN which chroma || echo "chroma not found"
 
