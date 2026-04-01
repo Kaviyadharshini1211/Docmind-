@@ -41,7 +41,7 @@ export default function UploadPage({ files, onAddFile, onRemoveFile, historyCoun
     setProgress(0);
 
     try {
-      const data = await api.uploadFile(file, setProgress);
+      await api.uploadFile(file, setProgress);
       onAddFile({ name: file.name, size: file.size });
       setStatus({ type: "success", msg: `✓ "${file.name}" indexed successfully!` });
     } catch (err) {
