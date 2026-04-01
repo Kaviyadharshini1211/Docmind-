@@ -1,5 +1,5 @@
 // ai-service/llm.js
-require("dotenv").config({ path: "../server/.env" });
+require("dotenv").config();
 const Groq = require("groq-sdk");
 
 const groq = new Groq({

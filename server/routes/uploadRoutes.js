@@ -5,7 +5,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const auth = require("../middleware/authMiddleware");
-const { processFile } = require("../../ai-service/processFile");
+const { processFile } = require("./ai-service/processFile");
 
 // Ensure uploads directory exists
 const uploadDir = path.join(__dirname, "../../uploads");
