@@ -1,58 +1,44 @@
-# ========================
-# NODE MODULES
-# ========================
+# ── Dependencies ─────────────────────────────────
 node_modules/
+*/node_modules/
 **/node_modules/
 
-# ========================
-# ENV FILES (VERY IMPORTANT)
-# ========================
+# ── Environment Variables ─────────────────────────
 .env
-.env.*
+.env.local
+.env.development
+.env.production
 server/.env
 ai-service/.env
 
-# ========================
-# LOGS
-# ========================
-logs/
+# ── Uploads & Vector Data ─────────────────────────
+uploads/
+chroma-data/
+*.pdf
+
+# ── React Build ───────────────────────────────────
+client/build/
+
+# ── Embedding Model Cache ─────────────────────────
+ai-service/.cache/
+server/ai-service/.cache/
+.cache/
+
+# ── Logs ──────────────────────────────────────────
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# ========================
-# BUILD FILES
-# ========================
-build/
-dist/
-client/build/
-
-# ========================
-# OS FILES
-# ========================
+# ── OS Files ──────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# ========================
-# UPLOADS (IMPORTANT)
-# ========================
-server/uploads/
-
-# ========================
-# CACHE
-# ========================
-.cache/
-*.cache
-
-# ========================
-# EDITOR FILES
-# ========================
+# ── Editor ────────────────────────────────────────
 .vscode/
 .idea/
-
-# ========================
-# TEMP FILES
-# ========================
-*.tmp
-*.temp
+*.suo
+*.ntvs*
+*.njsproj
+*.sln

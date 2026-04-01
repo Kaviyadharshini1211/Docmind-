@@ -1,9 +1,8 @@
 node_modules
-*/node_modules
+ai-service/node_modules
 npm-debug.log
 .env
 uploads/*
 chroma-data/
 *.pdf
-client/
 .git
