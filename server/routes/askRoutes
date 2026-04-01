@@ -1,0 +1,25 @@
+// server/routes/askRoutes.js
+const express = require("express");
+const router = express.Router();
+const auth = require("../middleware/authMiddleware");
+const { askQuestion } = require("../../ai-service/ask");
+
+router.post("/", auth, async (req, res) => {
+  try {
+    const { question } = req.body;
+
+    if (!question || question.trim().length === 0) {
+      return res.status(400).json({ error: "Question is required" });
+    }
+
+    // req.user is set by auth middleware (user ID from JWT)
+    const answer = await askQuestion(question, req.user);
+
+    res.json({ answer });
+  } catch (err) {
+    console.error("Ask error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+module.exports = router;
