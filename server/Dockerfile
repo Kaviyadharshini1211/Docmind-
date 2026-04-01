@@ -23,6 +23,8 @@ RUN npm install
 COPY ai-service/package*.json ./ai-service/
 RUN cd ai-service && npm install
 RUN cd ai-service && npm install @chroma-core/default-embed
+RUN cd ai-service && npm install chromadb@latest
+
 # Copy everything from server folder
 COPY . .
 
