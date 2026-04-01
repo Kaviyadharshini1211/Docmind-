@@ -1,33 +1,33 @@
 FROM node:18-slim
 
-# Install Python, pip, curl
+# Install Python, pip, curl for ChromaDB
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install ChromaDB — pin version for stability
+# Install ChromaDB
 RUN pip3 install "chromadb==0.4.24" --break-system-packages
 
 WORKDIR /app
 
 # Install server dependencies
-COPY server/package*.json ./server/
-RUN cd server && npm install
+# (Dockerfile is inside server/, so . = server/)
+COPY package*.json ./
+RUN npm install
 
 # Install ai-service dependencies
-COPY server/ai-service/package*.json ./server/ai-service/
-RUN cd server/ai-service && npm install
+COPY ai-service/package*.json ./ai-service/
+RUN cd ai-service && npm install
 
-# Copy all source
-COPY server/ ./server/
+# Copy all server source code
+# . here means everything in server/ (the build context)
+COPY . .
 
 # Create required folders
 RUN mkdir -p /app/chroma-data /app/uploads
 
-# Copy and permission start script
-COPY start.sh ./start.sh
 RUN chmod +x ./start.sh
 
 EXPOSE 5000
