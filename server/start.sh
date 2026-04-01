@@ -1,29 +1,25 @@
 #!/bin/bash
 
+echo "=== Checking ChromaDB installation ==="
+which chroma || echo "chroma not found in PATH"
+chroma --version || echo "chroma version failed"
+
 echo "=== Starting ChromaDB ==="
-chroma run --path /app/chroma-data --host 0.0.0.0 --port 8000 &
+chroma run --path /app/chroma-data --host 0.0.0.0 --port 8000 2>&1 &
 CHROMA_PID=$!
 
-echo "=== Waiting for ChromaDB to be ready ==="
-READY=0
-for i in $(seq 1 60); do
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/v1/heartbeat 2>/dev/null)
-  if [ "$STATUS" = "200" ]; then
-    echo "=== ChromaDB is ready after ${i} attempts ==="
-    READY=1
-    break
-  fi
-  echo "Attempt $i/60 — ChromaDB not ready yet (status: $STATUS)..."
-  sleep 3
-done
+echo "=== ChromaDB PID: $CHROMA_PID ==="
+echo "=== Waiting 30 seconds for ChromaDB to start ==="
+sleep 30
 
-if [ "$READY" = "0" ]; then
-  echo "=== ERROR: ChromaDB failed to start after 60 attempts ==="
-  echo "=== Checking ChromaDB process ==="
-  ps aux | grep chroma
+echo "=== Checking if ChromaDB process is still running ==="
+if kill -0 $CHROMA_PID 2>/dev/null; then
+  echo "=== ChromaDB process is running ==="
+else
+  echo "=== ERROR: ChromaDB process died ==="
   exit 1
 fi
 
 echo "=== Starting Express Server ==="
-cd /app/server
-node index.js
+cd /app
+node server/index.js
