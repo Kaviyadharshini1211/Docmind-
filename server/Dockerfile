@@ -1,32 +1,35 @@
 FROM node:18-slim
 
-# Install Python + pip for ChromaDB
+# Install Python, pip, curl
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install chromadb --break-system-packages
+# Install ChromaDB — pin version for stability
+RUN pip3 install "chromadb==0.4.24" --break-system-packages
 
 WORKDIR /app
 
 # Install server dependencies
-COPY package*.json ./
-RUN npm install
+COPY server/package*.json ./server/
+RUN cd server && npm install
 
 # Install ai-service dependencies
-COPY ai-service/package*.json ./ai-service/
-RUN cd ai-service && npm install
+COPY server/ai-service/package*.json ./server/ai-service/
+RUN cd server/ai-service && npm install
 
-# Copy all source code
-COPY . .
+# Copy all source
+COPY server/ ./server/
 
 # Create required folders
-RUN mkdir -p uploads chroma-data
+RUN mkdir -p /app/chroma-data /app/uploads
+
+# Copy and permission start script
+COPY start.sh ./start.sh
+RUN chmod +x ./start.sh
 
 EXPOSE 5000
-
-RUN chmod +x ./start.sh
 
 CMD ["./start.sh"]
