@@ -28,19 +28,18 @@ const allowedOrigins = [
 ];
 
 app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (Postman, mobile apps)
+  origin: (origin, callback) => {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error("CORS not allowed"));
+      callback(new Error("CORS blocked"));
     }
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 }));
 
-// ✅ Explicitly handle preflight (IMPORTANT for file upload)
+// ✅ handle preflight explicitly (safe for Express 5)
 app.options("/*", cors({
   origin: allowedOrigins,
   credentials: true,
