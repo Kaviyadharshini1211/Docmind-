@@ -8,10 +8,14 @@ const { textToVector } = require("./embed");
 // ChromaDB client — connects to local Chroma server
 // Run: npx chromadb@latest run --path ./chroma-data
 const client = new ChromaClient({
-  host: process.env.CHROMA_HOST || "127.0.0.1",
-  port: process.env.CHROMA_PORT || 8000,
+  path: "https://api.trychroma.com",
+  auth: {
+    provider: "token",
+    credentials: process.env.CHROMA_API_KEY,
+  },
+  tenant: process.env.CHROMA_TENANT,
+  database: process.env.CHROMA_DATABASE,
 });
-
 /**
  * Get or create a ChromaDB collection for a specific user.
  * Each user gets their own isolated vector space.
