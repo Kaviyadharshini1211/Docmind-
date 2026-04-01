@@ -233,11 +233,6 @@ LLaMA 3.3 70B on Groq is extremely fast (hundreds of tokens/sec) and has a gener
 
 ---
 
-## Screenshots
-
-> Dashboard · Chat · Upload · History
-
-*(Add screenshots here)*
 
 ---
 
