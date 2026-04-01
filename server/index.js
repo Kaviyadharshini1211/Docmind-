@@ -29,6 +29,8 @@ app.use(cors({
   ],
   credentials: true,
 }));
+app.options("*", cors()); // ✅ THIS FIXES YOUR ISSUE
+
 app.use(express.json());
 
 // Routes
