@@ -23,7 +23,11 @@ connectDB();
 const app = express();
 
 app.use(cors({
-  origin: ["*"],
+  origin: [
+  "http://localhost:3000",
+  "https://doc-mind-pink.vercel.app",
+  "https://doc-mind-pink.vercel.app/"
+];
   credentials: true,
 }));
 
