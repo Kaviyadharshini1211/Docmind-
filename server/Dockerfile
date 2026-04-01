@@ -8,29 +8,26 @@ RUN apt-get update && apt-get install -y \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
-# ✅ Fix: Install compatible numpy + chromadb
+# Fix numpy issue
 RUN pip3 install --no-cache-dir "numpy<2.0" "chromadb==0.4.24" --break-system-packages
 
-# Optional check (safe)
 RUN which chroma || echo "chroma not found"
 
-WORKDIR /app
+# Already inside server context
+WORKDIR /server
 
-# Install backend dependencies
+# ✅ NO "server/" prefix here
 COPY package*.json ./
 RUN npm install
 
-# Install AI service dependencies
 COPY ai-service/package*.json ./ai-service/
 RUN cd ai-service && npm install
 
-# Copy full project
+# Copy everything from server folder
 COPY . .
 
-# Create required directories
-RUN mkdir -p /app/chroma-data /app/uploads
+RUN mkdir -p /server/chroma-data /server/uploads
 
-# Make start script executable
 RUN chmod +x ./start.sh
 
 EXPOSE 5000
