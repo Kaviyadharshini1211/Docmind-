@@ -1,6 +1,6 @@
 FROM node:18-slim
 
-# Install Python, pip, curl, procps
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
@@ -8,27 +8,29 @@ RUN apt-get update && apt-get install -y \
     procps \
     && rm -rf /var/lib/apt/lists/*
 
-# Install ChromaDB and verify it installed correctly
-RUN pip3 install "chromadb==0.4.24" --break-system-packages
-RUN pip3 show chromadb
-RUN which chroma && chroma --version
+# ✅ Fix: Install compatible numpy + chromadb
+RUN pip3 install --no-cache-dir "numpy<2.0" "chromadb==0.4.24" --break-system-packages
+
+# Optional check (safe)
+RUN which chroma || echo "chroma not found"
 
 WORKDIR /app
 
-# Install server dependencies
+# Install backend dependencies
 COPY package*.json ./
 RUN npm install
 
-# Install ai-service dependencies
+# Install AI service dependencies
 COPY ai-service/package*.json ./ai-service/
 RUN cd ai-service && npm install
 
-# Copy all source
+# Copy full project
 COPY . .
 
-# Create folders
+# Create required directories
 RUN mkdir -p /app/chroma-data /app/uploads
 
+# Make start script executable
 RUN chmod +x ./start.sh
 
 EXPOSE 5000

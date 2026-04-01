@@ -2,7 +2,12 @@ node_modules
 ai-service/node_modules
 npm-debug.log
 .env
+
 uploads/*
 chroma-data/
+
 *.pdf
 .git
+.gitignore
+Dockerfile
+docker-compose.yml
