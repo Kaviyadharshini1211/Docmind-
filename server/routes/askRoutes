@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/authMiddleware");
-const { askQuestion } = require("./ai-service/ask");
+const { askQuestion } = require("../ai-service/ask");
 
 router.post("/", auth, async (req, res) => {
   try {
