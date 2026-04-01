@@ -8,7 +8,8 @@ const { textToVector } = require("./embed");
 // ChromaDB client — connects to local Chroma server
 // Run: npx chromadb@latest run --path ./chroma-data
 const client = new ChromaClient({
-   path: process.env.CHROMA_URL || "http://localhost:8000",
+  host: process.env.CHROMA_HOST || "127.0.0.1",
+  port: process.env.CHROMA_PORT || 8000,
 });
 
 /**
