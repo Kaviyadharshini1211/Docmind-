@@ -10,7 +10,6 @@ const { textToVector } = require("./embed");
 const client = new ChromaClient({
   host: process.env.CHROMA_HOST || "127.0.0.1",
   port: process.env.CHROMA_PORT || 8000,
-  path: "/api/v1"
 });
 
 /**
