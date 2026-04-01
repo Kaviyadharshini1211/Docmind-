@@ -27,7 +27,7 @@ app.use(cors({
   "http://localhost:3000",
   "https://doc-mind-pink.vercel.app",
   "https://doc-mind-pink.vercel.app/"
-];
+],
   credentials: true,
 }));
 
