@@ -1,262 +1,168 @@
-/* src/pages/UploadPage.css */
-.upload-zone {
-  border: 2px dashed var(--border);
-  border-radius: var(--radius-xl);
-  padding: 60px 32px;
-  text-align: center;
-  cursor: pointer;
-  transition: all var(--transition);
-  background: var(--bg-surface);
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 28px;
+// src/pages/UploadPage.js
+import React, { useState, useRef } from "react";
+import Layout from "../components/Layout";
+import { api } from "../services/api";
+import "./UploadPage.css";
+
+function formatBytes(bytes) {
+  if (!bytes) return "—";
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+  return (bytes / (1024 * 1024)).toFixed(1) + " MB";
 }
 
-.upload-zone::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(ellipse 60% 50% at 50% 50%, var(--accent-dim), transparent);
-  opacity: 0;
-  transition: opacity var(--transition);
-  pointer-events: none;
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric",
+  });
 }
 
-.upload-zone:hover,
-.upload-zone.drag-over {
-  border-color: var(--accent);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-accent);
-}
+export default function UploadPage({ files, onAddFile, onRemoveFile, historyCount }) {
+  const [dragOver, setDragOver] = useState(false);
+  const [progress, setProgress] = useState(null);
+  const [status, setStatus] = useState(null); // { type, msg }
+  const [uploading, setUploading] = useState(false);
+  const [currentFile, setCurrentFile] = useState(null);
+  const inputRef = useRef();
 
-.upload-zone:hover::before,
-.upload-zone.drag-over::before {
-  opacity: 1;
-}
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      setStatus({ type: "error", msg: "Only PDF files are supported." });
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setStatus({ type: "error", msg: "File too large. Maximum size is 20MB." });
+      return;
+    }
 
-.upload-zone.drag-over {
-  background: var(--accent-dim);
-}
+    setCurrentFile(file.name);
+    setUploading(true);
+    setStatus({ type: "processing", msg: "Uploading and indexing your document…" });
+    setProgress(0);
 
-.upload-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-  display: block;
-  transition: transform var(--transition);
-}
+    try {
+      await api.uploadFile(file, setProgress);
+      onAddFile({ name: file.name, size: file.size });
+      setStatus({ type: "success", msg: `✓ "${file.name}" indexed successfully!` });
+    } catch (err) {
+      setStatus({ type: "error", msg: err.message });
+    } finally {
+      setUploading(false);
+      setProgress(null);
+      setCurrentFile(null);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
 
-.upload-zone:hover .upload-icon {
-  transform: translateY(-4px);
-}
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    handleFile(file);
+  };
 
-.upload-title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 8px;
-}
+  return (
+    <Layout fileCount={files.length} historyCount={historyCount}>
+      <div className="page-header">
+        <h1 className="page-title">Upload Documents</h1>
+        <p className="page-subtitle">Add PDFs to your personal knowledge base</p>
+      </div>
 
-.upload-desc {
-  font-size: 14px;
-  color: var(--text-secondary);
-  font-style: italic;
-  margin-bottom: 20px;
-}
+      <div className="page-content">
+        {/* Drop zone */}
+        <div
+          className={`upload-zone ${dragOver ? "drag-over" : ""}`}
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={onDrop}
+          onClick={() => !uploading && inputRef.current?.click()}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".pdf"
+            style={{ display: "none" }}
+            onChange={(e) => handleFile(e.target.files[0])}
+          />
+          <span className="upload-icon">📤</span>
+          <div className="upload-title">
+            {dragOver ? "Drop it here!" : "Drop your PDF here"}
+          </div>
+          <p className="upload-desc">
+            Your document will be chunked, embedded, and stored in your personal vector database
+          </p>
+          <button className="upload-btn" disabled={uploading}>
+            {uploading ? "Processing…" : "Browse Files"}
+          </button>
+          <div className="upload-hint">PDF only · Max 20MB</div>
+        </div>
 
-.upload-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--accent);
-  color: #0a0a0f;
-  border: none;
-  border-radius: var(--radius-md);
-  padding: 10px 20px;
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all var(--transition);
-}
+        {/* Progress */}
+        {uploading && progress !== null && (
+          <div className="upload-progress-card">
+            <div className="upload-file-name">📄 {currentFile}</div>
+            <div className="progress-bar-wrap">
+              <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
+            </div>
+            <div className="progress-text">
+              <span>Uploading…</span>
+              <span>{progress}%</span>
+            </div>
+          </div>
+        )}
 
-.upload-btn:hover {
-  background: var(--accent-hover);
-  transform: translateY(-1px);
-}
+        {/* Status */}
+        {status && (
+          <div className={`upload-status ${status.type}`}>
+            {status.type === "processing" && (
+              <span style={{ display: "inline-block", animation: "spin 0.7s linear infinite" }}>⟳</span>
+            )}
+            {status.msg}
+          </div>
+        )}
 
-.upload-hint {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 12px;
-}
+        {/* Files list */}
+        <div className="section-title" style={{ marginBottom: 12 }}>
+          Your Documents ({files.length})
+        </div>
 
-/* Progress */
-.upload-progress-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 20px;
-  margin-bottom: 16px;
-  animation: fadeIn 0.3s ease both;
-}
-
-.upload-file-name {
-  font-family: var(--font-display);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.progress-bar-wrap {
-  background: var(--bg-elevated);
-  border-radius: 99px;
-  height: 6px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
-  border-radius: 99px;
-  transition: width 0.3s ease;
-  position: relative;
-}
-
-.progress-bar-fill::after {
-  content: '';
-  position: absolute;
-  top: 0; right: 0; bottom: 0;
-  width: 40px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
-  animation: shimmer 1s ease infinite;
-}
-
-.progress-text {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-secondary);
-  display: flex;
-  justify-content: space-between;
-}
-
-/* Status */
-.upload-status {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  font-size: 13px;
-  font-family: var(--font-mono);
-  margin-bottom: 16px;
-  animation: fadeIn 0.3s ease both;
-}
-
-.upload-status.success {
-  background: var(--success-dim);
-  border: 1px solid var(--success);
-  color: var(--success);
-}
-
-.upload-status.error {
-  background: var(--error-dim);
-  border: 1px solid var(--error);
-  color: var(--error);
-}
-
-.upload-status.processing {
-  background: var(--accent-dim);
-  border: 1px solid var(--border-active);
-  color: var(--accent);
-}
-
-/* Uploaded files table */
-.files-table {
-  background: var(--bg-surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.files-table-header {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  gap: 16px;
-  padding: 10px 16px;
-  background: var(--bg-elevated);
-  border-bottom: 1px solid var(--border);
-  font-family: var(--font-display);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-muted);
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-}
-
-.files-table-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto auto;
-  gap: 16px;
-  padding: 12px 16px;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-  transition: background var(--transition);
-  animation: fadeIn 0.3s ease both;
-}
-
-.files-table-row:last-child { border-bottom: none; }
-.files-table-row:hover { background: var(--bg-elevated); }
-
-.file-row-name {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
-.file-row-name span:last-child {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.file-row-size {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.file-row-date {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-muted);
-  white-space: nowrap;
-}
-
-.delete-btn {
-  background: none;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px 8px;
-  font-size: 13px;
-  transition: all var(--transition);
-}
-
-.delete-btn:hover {
-  color: var(--error);
-  border-color: var(--error);
-  background: var(--error-dim);
+        {files.length === 0 ? (
+          <div className="empty-state">
+            <span className="empty-state-icon">📭</span>
+            No documents uploaded yet. Drop a PDF above to get started.
+          </div>
+        ) : (
+          <div className="files-table">
+            <div className="files-table-header">
+              <span>Name</span>
+              <span>Size</span>
+              <span>Uploaded</span>
+              <span></span>
+            </div>
+            {files.map((f, i) => (
+              <div
+                className="files-table-row"
+                key={f.id}
+                style={{ animationDelay: `${i * 0.05}s` }}
+              >
+                <div className="file-row-name">
+                  <span>📄</span>
+                  <span>{f.name}</span>
+                </div>
+                <span className="file-row-size">{formatBytes(f.size)}</span>
+                <span className="file-row-date">{formatDate(f.uploadedAt)}</span>
+                <button
+                  className="delete-btn"
+                  onClick={() => onRemoveFile(f.id)}
+                  title="Remove from list"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
 }

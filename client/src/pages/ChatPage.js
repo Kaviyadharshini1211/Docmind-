@@ -166,7 +166,7 @@ export default function ChatPage({ files, history, onAddEntry, historyCount }) {
           {files.length === 0 && (
             <div className="no-doc-banner">
               ⚠ No documents indexed yet.{" "}
-              <a onClick={() => navigate("/upload")}>Upload a PDF</a>
+              <button onClick={() => navigate("/upload")} style={{ background: "none", border: "none", color: "var(--accent)", textDecoration: "underline", cursor: "pointer", padding: 0, font: "inherit" }}>Upload a PDF</button>
               {" "}first for best results.
             </div>
           )}
