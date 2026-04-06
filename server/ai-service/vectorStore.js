@@ -1,69 +1,67 @@
 // ai-service/vectorStore.js
-// ChromaDB: persistent vector store, one collection per user
-// Chroma stores data on disk at ./chroma-data (survives restarts)
+// Pinecone: persistent vector store, one namespace per user
+// No separate server needed — just API calls to Pinecone cloud
 
-const { ChromaClient } = require("chromadb");
+const { Pinecone } = require("@pinecone-database/pinecone");
 const { textToVector } = require("./embed");
 
-// ChromaDB client — connects to local Chroma server
-// Run: npx chromadb@latest run --path ./chroma-data
-const client = new ChromaClient({
-   path: process.env.CHROMA_URL || "http://localhost:8000",
+const client = new Pinecone({
+  apiKey: process.env.PINECONE_API_KEY,
 });
 
-/**
- * Get or create a ChromaDB collection for a specific user.
- * Each user gets their own isolated vector space.
- */
-async function getUserCollection(userId) {
-  const collectionName = `user_${userId}`;
+const INDEX_NAME = "docmind";
 
-  const collection = await client.getOrCreateCollection({
-    name: collectionName,
-    metadata: { "hnsw:space": "cosine" }, // cosine similarity for text
-  });
-
-  return collection;
+function getIndex() {
+  return client.index(INDEX_NAME);
 }
 
 /**
  * Store document chunks for a user.
- * Replaces existing documents if the same file is uploaded again.
+ * Each user is isolated using Pinecone namespaces.
  * @param {string[]} chunks - text chunks from PDF
  * @param {string} userId - user ID for isolation
- * @param {string} fileId - unique ID for this file (e.g. filename + timestamp)
+ * @param {string} fileId - unique ID for this file
  */
 async function createStore(chunks, userId, fileId) {
   if (!chunks || chunks.length === 0) {
     throw new Error("No chunks to store");
   }
 
-  const collection = await getUserCollection(userId);
+  const index = getIndex();
+  const namespace = `user_${String(userId)}`;
 
-  // Delete old documents from this file if re-uploading
+  // Delete old vectors from this file if re-uploading
   try {
-    await collection.delete({ where: { fileId: fileId } });
+    await index.namespace(namespace).deleteMany({
+      filter: { fileId: { $eq: String(fileId) } },
+    });
   } catch (_) {
-    // Collection may be empty, that's fine
+    // Namespace may not exist yet, that's fine
   }
 
-  // Embed all chunks
   console.log(`Embedding ${chunks.length} chunks...`);
   const embeddings = await Promise.all(chunks.map((c) => textToVector(c)));
 
-  // Build IDs and metadata
-  const ids = chunks.map((_, i) => `${fileId}_chunk_${i}`);
-  const metadatas = chunks.map((_, i) => ({ fileId, chunkIndex: i, userId }));
+  // Build vectors in Pinecone format
+  const vectors = chunks.map((chunk, i) => ({
+    id: `${fileId}_chunk_${i}`,
+    values: embeddings[i],
+    metadata: {
+      fileId: String(fileId),
+      chunkIndex: i,
+      userId: String(userId),
+      text: chunk, // store text in metadata for retrieval
+    },
+  }));
 
-  // Store in Chroma
-  await collection.add({
-    ids,
-    embeddings,
-    documents: chunks,
-    metadatas,
-  });
+  // Pinecone upsert in batches of 100
+  const BATCH_SIZE = 100;
+  for (let i = 0; i < vectors.length; i += BATCH_SIZE) {
+    const batch = vectors.slice(i, i + BATCH_SIZE);
+    await index.namespace(namespace).upsert(batch);
+  }
 
-  console.log(`✅ Stored ${chunks.length} chunks in ChromaDB for user ${userId}`);
+  console.log(`✅ Stored ${chunks.length} chunks in Pinecone for user ${userId}`);
 }
 
 /**
@@ -73,35 +71,35 @@ async function createStore(chunks, userId, fileId) {
  * @param {number} topK - number of results to return
  */
 async function search(query, userId, topK = 5) {
-  const collection = await getUserCollection(userId);
-
-  const count = await collection.count();
-  if (count === 0) {
-    throw new Error("No documents found. Please upload a file first.");
-  }
+  const index = getIndex();
+  const namespace = `user_${String(userId)}`;
 
   const queryEmbedding = await textToVector(query);
 
-  const results = await collection.query({
-    queryEmbeddings: [queryEmbedding],
-    nResults: Math.min(topK, count),
+  const results = await index.namespace(namespace).query({
+    vector: queryEmbedding,
+    topK,
+    includeMetadata: true,
   });
 
-  // results.documents is [[chunk1, chunk2, ...]]
-  return results.documents[0];
+  if (!results.matches || results.matches.length === 0) {
+    throw new Error("No documents found. Please upload a file first.");
+  }
+
+  // Return the text chunks from metadata
+  return results.matches.map((match) => match.metadata.text);
 }
 
 /**
- * Delete all documents for a user (e.g. on account deletion)
+ * Delete all vectors for a user
  */
 async function clearUserStore(userId) {
-  const collectionName = `user_${userId}`;
   try {
-    await client.deleteCollection({ name: collectionName });
-    console.log(`Cleared collection for user ${userId}`);
-  } catch (_) {
-    // Collection didn't exist
-  }
+    const index = getIndex();
+    const namespace = `user_${String(userId)}`;
+    await index.namespace(namespace).deleteAll();
+    console.log(`Cleared namespace for user ${userId}`);
+  } catch (_) {}
 }
 
 module.exports = { createStore, search, clearUserStore };

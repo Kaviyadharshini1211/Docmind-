@@ -1,35 +1,21 @@
 FROM node:18-slim
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    curl \
-    procps \
-    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
 
-# Fix numpy issue
-RUN pip3 install --no-cache-dir "numpy<2.0" "chromadb==0.4.24" --break-system-packages
-
-RUN which chroma || echo "chroma not found"
-
-# Already inside server context
-WORKDIR /server
-
-# ✅ NO "server/" prefix here
+# Install server dependencies
 COPY package*.json ./
 RUN npm install
 
+# Install ai-service dependencies
 COPY ai-service/package*.json ./ai-service/
 RUN cd ai-service && npm install
-RUN cd ai-service && npm install @chroma-core/default-embed
-# Copy everything from server folder
+
+# Copy all source code
 COPY . .
 
-RUN mkdir -p /server/chroma-data /server/uploads
-
-RUN chmod +x ./start.sh
+# Create uploads folder
+RUN mkdir -p /app/uploads
 
 EXPOSE 5000
 
-CMD ["./start.sh"]
+CMD ["node", "index.js"]
