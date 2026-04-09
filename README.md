@@ -4,7 +4,7 @@
 
 ![Stack](https://img.shields.io/badge/React.js-18-61DAFB?style=flat-square&logo=react)
 ![Stack](https://img.shields.io/badge/Node.js-Express-339933?style=flat-square&logo=node.js)
-![Stack](https://img.shields.io/badge/ChromaDB-Vector%20DB-FF6B35?style=flat-square)
+![Stack](https://img.shields.io/badge/Pinecone-Vector%20DB-000000?style=flat-square)
 ![Stack](https://img.shields.io/badge/Groq-LLaMA%203.3%2070B-F55036?style=flat-square)
 ![Stack](https://img.shields.io/badge/MongoDB-Auth-47A248?style=flat-square&logo=mongodb)
 
@@ -19,9 +19,9 @@ DocMind AI is a full-stack **Retrieval-Augmented Generation (RAG)** system that 
 ## Features
 
 - **PDF Upload & Processing** — drag and drop PDFs, auto-parsed and chunked with overlap
-- **Semantic Search** — embeddings stored in ChromaDB for fast vector similarity search
+- **Semantic Search** — embeddings stored in Pinecone for fast vector similarity search
 - **AI Q&A** — context-aware answers powered by LLaMA 3.3 70B via Groq
-- **Per-user Isolation** — each user has their own ChromaDB collection, fully isolated
+- **Per-user Isolation** — each user has their own Pinecone namespace, fully isolated
 - **Question History** — all past Q&A sessions saved and searchable
 - **JWT Authentication** — secure register/login with bcrypt password hashing
 - **Dark Academic UI** — built in React.js with a clean dark theme
@@ -34,7 +34,7 @@ DocMind AI is a full-stack **Retrieval-Augmented Generation (RAG)** system that 
 |---|---|
 | Frontend | React.js 18, React Router v6, CSS3 |
 | Backend | Node.js, Express.js |
-| Vector Database | ChromaDB (persistent, local) |
+| Vector Database | Pinecone (cloud, persistent, free tier) |
 | Embeddings | all-MiniLM-L6-v2 via @xenova/transformers (local, free) |
 | LLM | LLaMA 3.3 70B via Groq API |
 | Auth | JWT + bcryptjs |
@@ -56,7 +56,7 @@ DocMind AI is a full-stack **Retrieval-Augmented Generation (RAG)** system that 
 │   /api/auth   /api/upload   /api/ask                │
 └──────┬──────────────┬───────────────┬───────────────┘
        │              │               │
-  MongoDB         AI Service       ChromaDB
+  MongoDB         AI Service       Pinecone
   (users)     ┌─────────────┐   (vector store)
               │ parse PDF   │
               │ chunk text  │
@@ -70,9 +70,9 @@ DocMind AI is a full-stack **Retrieval-Augmented Generation (RAG)** system that 
 
 ```
 Upload:  PDF → parse text → chunk (800 chars, 150 overlap)
-              → embed (all-MiniLM-L6-v2) → store in ChromaDB
+              → embed (all-MiniLM-L6-v2) → store in Pinecone
 
-Query:   question → embed → ChromaDB similarity search (top 5)
+Query:   question → embed → Pinecone similarity search (top 5)
               → build prompt with context → LLaMA 3.3 70B → answer
 ```
 
@@ -101,23 +101,23 @@ docmind-ai/
 │
 ├── server/                        # Express backend
 │   ├── index.js
+│   ├── Dockerfile
 │   ├── config/db.js
 │   ├── models/User.js
 │   ├── middleware/authMiddleware.js
 │   ├── controllers/authController.js
-│   └── routes/
-│       ├── authRoutes.js
-│       ├── uploadRoutes.js
-│       └── askRoutes.js
-│
-├── ai-service/                    # RAG pipeline
-│   ├── embed.js                   # Local embeddings
-│   ├── vectorStore.js             # ChromaDB operations
-│   ├── parser.js                  # PDF text extraction
-│   ├── chunker.js                 # Overlapping chunking
-│   ├── processFile.js             # Upload pipeline
-│   ├── ask.js                     # Query pipeline
-│   └── llm.js                     # Groq API
+│   ├── routes/
+│   │   ├── authRoutes.js
+│   │   ├── uploadRoutes.js
+│   │   └── askRoutes.js
+│   └── ai-service/                # RAG pipeline
+│       ├── embed.js               # Local embeddings
+│       ├── vectorStore.js         # Pinecone operations
+│       ├── parser.js              # PDF text extraction
+│       ├── chunker.js             # Overlapping chunking
+│       ├── processFile.js         # Upload pipeline
+│       ├── ask.js                 # Query pipeline
+│       └── llm.js                 # Groq API
 │
 └── uploads/                       # Temp PDF storage
 ```
@@ -129,9 +129,9 @@ docmind-ai/
 ### Prerequisites
 
 - Node.js 18+
-- Python 3.8+ (for ChromaDB)
 - MongoDB (local or Atlas)
 - Groq API key — free at [console.groq.com](https://console.groq.com)
+- Pinecone API key — free at [pinecone.io](https://pinecone.io)
 
 ### 1. Clone the repository
 
@@ -140,13 +140,20 @@ git clone https://github.com/yourusername/docmind-ai.git
 cd docmind-ai
 ```
 
-### 2. Install & start ChromaDB
+### 2. Create a Pinecone Index
 
-```bash
-pip install chromadb
-chroma run --path ./chroma-data
-# Keep this terminal running — ChromaDB runs on port 8000
-```
+1. Go to [pinecone.io](https://pinecone.io) → sign up free
+2. Click **Create Index** → **Custom settings** → **Vector embeddings**
+3. Fill in:
+
+| Field | Value |
+|---|---|
+| Index Name | `docmind` |
+| Dimensions | `384` |
+| Metric | `cosine` |
+| Cloud | AWS · us-east-1 |
+
+4. Copy your **API Key** and **Host URL** from the dashboard
 
 ### 3. Setup the server
 
@@ -161,7 +168,7 @@ node index.js
 ### 4. Setup the AI service
 
 ```bash
-cd ai-service
+cd server/ai-service
 npm install
 # Embedding model downloads automatically on first use (~25MB)
 ```
@@ -186,6 +193,8 @@ Create `server/.env`:
 MONGO_URI=mongodb://localhost:27017/docmind-ai
 JWT_SECRET=your_long_random_secret_here
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxx
+PINECONE_API_KEY=pcsk_xxxxxxxxxxxxxxxxxxxxxxxx
+PINECONE_HOST=https://docmind-xxxxx.svc.aped-xxxx.pinecone.io
 PORT=5000
 ```
 
@@ -219,8 +228,8 @@ POST /api/ask             { question }
 
 ## Key Design Decisions
 
-**Why ChromaDB?**
-Persistent, runs locally, zero cost, simple API. Perfect for a per-user RAG system without needing a cloud vector DB.
+**Why Pinecone?**
+Fully managed cloud vector database with a generous free tier. No server to run, no Python dependencies, no Docker complexity — just an API call. Perfect for production deployments on Render.
 
 **Why local embeddings?**
 `all-MiniLM-L6-v2` via `@xenova/transformers` runs entirely on your machine — no API key, no cost, no latency overhead from external calls. 384-dimension vectors with cosine similarity.
@@ -230,9 +239,6 @@ A 150-character overlap between 800-character chunks prevents context from being
 
 **Why Groq?**
 LLaMA 3.3 70B on Groq is extremely fast (hundreds of tokens/sec) and has a generous free tier — ideal for a study assistant where response speed matters.
-
----
-
 
 ---
 
