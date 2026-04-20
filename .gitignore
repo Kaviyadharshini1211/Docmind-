@@ -43,3 +43,4 @@ desktop.ini
 *.njsproj
 *.sln
 secrets.yaml
+k8s/secrets.yaml

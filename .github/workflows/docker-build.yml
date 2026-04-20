@@ -1,5 +1,9 @@
 # .github/workflows/docker-build.yml
-name: Build and Push Docker Image
+# Triggered on push to main — builds BOTH backend and frontend Docker images
+# and pushes them to Docker Hub.
+# Minikube uses imagePullPolicy: Always to fetch the latest image on redeploy.
+
+name: Build and Push Docker Images
 
 on:
   push:
@@ -7,15 +11,17 @@ on:
       - main
     paths:
       - "server/**"
+      - "client/**"
       - ".github/workflows/docker-build.yml"
 
 jobs:
-  build-and-push:
+  # ── Job 1: Build the Express backend image
+  build-backend:
+    name: Build Backend Image
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -23,7 +29,10 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push Docker image
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push backend image
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -32,3 +41,34 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/docmind-backend:latest
             ${{ secrets.DOCKER_USERNAME }}/docmind-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Job 2: Build the React frontend image (runs in parallel)
+  build-frontend:
+    name: Build Frontend Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./client
+          file: ./client/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/docmind-frontend:latest
+            ${{ secrets.DOCKER_USERNAME }}/docmind-frontend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

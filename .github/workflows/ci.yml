@@ -1,0 +1,63 @@
+# .github/workflows/ci.yml
+# Runs on every Pull Request — acts as a gate before merging to main.
+# Checks: dependency install + basic syntax validation on both server and client.
+
+name: CI — Lint & Check
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  check-backend:
+    name: Check Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Syntax check — index.js
+        run: node --check index.js
+
+      - name: Syntax check — metrics.js
+        run: node --check metrics.js
+
+  check-frontend:
+    name: Check Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend (verifies no compile errors)
+        run: npm run build
+        env:
+          # Suppress CI=true treating warnings as errors
+          CI: false

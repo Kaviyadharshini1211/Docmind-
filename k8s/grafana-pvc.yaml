@@ -1,0 +1,15 @@
+# k8s/grafana-pvc.yaml
+# Gives Grafana persistent storage so dashboards are not lost on pod restart.
+# Minikube provides a default StorageClass (standard) for local PVCs.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+  labels:
+    app: grafana
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

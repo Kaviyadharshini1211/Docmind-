@@ -242,6 +242,104 @@ LLaMA 3.3 70B on Groq is extremely fast (hundreds of tokens/sec) and has a gener
 
 ---
 
+## Kubernetes Deployment (Minikube)
+
+### CI/CD Flow
+
+```
+Git push to main
+      │
+      ▼
+GitHub Actions: docker-build.yml
+  ├── build-backend  → kaviya1211/docmind-backend:latest  (Docker Hub)
+  └── build-frontend → kaviya1211/docmind-frontend:latest (Docker Hub)
+      │
+      ▼
+Local: .\scripts\deploy-minikube.ps1
+  └── kubectl apply -f k8s/   (Minikube pulls images from Docker Hub)
+```
+
+### Prerequisites
+
+- [Minikube](https://minikube.sigs.k8s.io/) installed and running
+- [kubectl](https://kubernetes.io/docs/tasks/tools/) configured
+- Docker Hub account with images pushed via GitHub Actions
+
+### GitHub Secrets Required
+
+Add these in **Settings → Secrets and variables → Actions**:
+
+| Secret | Value |
+|--------|-------|
+| `DOCKER_USERNAME` | Your Docker Hub username (`kaviya1211`) |
+| `DOCKER_PASSWORD` | Your Docker Hub password or access token |
+
+### Deploy to Minikube
+
+```powershell
+# 1. Start Minikube
+minikube start
+
+# 2. Copy the secrets template and fill in real values
+cp k8s/secrets.example.yaml k8s/secrets.yaml
+# Edit k8s/secrets.yaml with real credentials
+
+# 3. Run the deploy script (applies all manifests in the correct order)
+.\scripts\deploy-minikube.ps1
+
+# Optional: Full reset and redeploy
+.\scripts\deploy-minikube.ps1 -Reset
+```
+
+The script prints access URLs for all services when done.
+
+### Kubernetes Resources
+
+| Resource | File |
+|----------|------|
+| Backend Deployment + Service | `k8s/backend-deployment.yaml`, `k8s/backend-service.yaml` |
+| Frontend Deployment + Service | `k8s/frontend-deployment.yaml`, `k8s/frontend-service.yaml` |
+| Prometheus ConfigMap + Deployment + Service | `k8s/prometheus.yaml` |
+| Grafana Deployment + Service | `k8s/grafana.yaml` |
+| Grafana PVC | `k8s/grafana-pvc.yaml` |
+| Grafana Datasource Provisioning | `k8s/grafana-datasource-configmap.yaml` |
+| RBAC for Prometheus | `k8s/rbac.yaml` |
+| HPA (auto-scaling) | `k8s/hpa.yaml` |
+| Secrets template | `k8s/secrets.example.yaml` |
+
+---
+
+## Monitoring (Prometheus + Grafana)
+
+### What's Instrumented
+
+The backend exposes a `/metrics` endpoint (Prometheus format) with:
+- **Default Node.js metrics** — CPU, memory, event loop lag, GC stats
+- **`docmind_http_requests_total`** — request count by method/route/status
+- **`docmind_http_request_duration_seconds`** — latency histogram
+- **`docmind_active_connections`** — live connection count
+
+### Access Monitoring
+
+```powershell
+# Prometheus — check targets at http://localhost:9090/targets
+kubectl port-forward svc/prometheus-service 9090:9090
+
+# Grafana — login at http://localhost:3000 (admin / your GRAFANA_ADMIN_PASSWORD)
+kubectl port-forward svc/grafana-service 3000:3000
+```
+
+Prometheus is **automatically provisioned as the default Grafana datasource** — no manual configuration needed.
+
+### Create a Dashboard in Grafana
+
+1. Open Grafana → **Dashboards → New → Import**
+2. Use ID **`1860`** (Node Exporter Full) as a starting point, or build custom panels using:
+   - `docmind_http_requests_total` — request rate
+   - `rate(docmind_http_request_duration_seconds_sum[5m])` — latency trends
+
+---
+
 ## License
 
-MIT
+MIT
