@@ -3,15 +3,15 @@ FROM node:18-slim
 WORKDIR /app
 
 # Install server dependencies
-COPY package*.json ./
+COPY server/package*.json ./
 RUN npm install
 
 # Install ai-service dependencies
-COPY ai-service/package*.json ./ai-service/
+COPY server/ai-service/package*.json ./ai-service/
 RUN cd ai-service && npm install
 
 # Copy all source code
-COPY . .
+COPY server/ .
 
 # Create uploads folder
 RUN mkdir -p /app/uploads
